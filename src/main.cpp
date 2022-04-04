@@ -119,7 +119,9 @@ int main() {
           bool too_close = false; // True if too close to a car in front
           bool left_stop = false;
           bool right_stop = false;
-          int change_lane = lane;
+          int cost = 0;
+          double right_cost = 0;
+          double left_cost = 0;
           lane_time++;
 
           // Find ref_v to use
@@ -154,26 +156,36 @@ int main() {
               // make sure enough space for lane changes 
               if (check_car_s < car_s - 22 || check_car_s > car_s + 22) {
                 enough_space = true;
+                // cost evaluated as lane with most space
+                if (empty_lane == lane + 1) {
+                  right_cost += abs(check_car_s-car_s);
+                }
+                else if(empty_lane == lane - 1) {
+                  left_cost += abs(check_car_s-car_s);
+                }
               }
               // perform lane change if safe to do so
-              if (enough_space && empty_lane == lane +1 && !right_stop) {
-                change_lane = lane + 1;
-              }
-              else if (!enough_space and empty_lane == lane + 1){
+              // decide between left and right lane based on cost calculation
+              if (!enough_space and empty_lane == lane + 1){
                 right_stop = true;
+                right_cost = 0;
               }
-              if (enough_space and empty_lane == lane -1 && !left_stop) {
-                change_lane = lane - 1;
+              else if (enough_space && empty_lane == lane +1 && !right_stop && right_cost > left_cost) {
+                cost =  1;
               }
-              else if (!enough_space and empty_lane == lane -1) {
+              if (!enough_space and empty_lane == lane -1) {
                 left_stop = true;
+                left_cost = 0;
+              }
+              else if (enough_space and empty_lane == lane -1 && !left_stop && left_cost > right_cost) {
+                cost = - 1;
               }
             }
           }
 
           // too close to car ahead and atleast one lane free
-          if (too_close && (!left_stop || !right_stop) && ref_vel >40 && lane_time > 130 && change_lane != lane) {
-            lane = change_lane;
+          if (too_close && (!left_stop || !right_stop) && ref_vel >40 && lane_time > 130 && cost!= 0) {
+            lane += cost;
             lane_time = 0;
           }
         
