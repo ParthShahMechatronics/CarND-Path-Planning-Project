@@ -135,8 +135,8 @@ int main() {
             check_car_s += (double)prev_size * 0.02 * check_speed;
 
             if (d < (2+4*lane+2) && d > (2+4*lane-2)){              
-              // If the check_car is within 25 meters in front, reduce ref_vel so that we don't hit it
-              if (check_car_s > car_s && (check_car_s - car_s) < 22){
+              // If the check_car is within 24 meters in front, reduce ref_vel so that we don't hit it
+              if (check_car_s > car_s && (check_car_s - car_s) < 24){
                 //ref_vel = 29.5;
                 too_close = true;
               } 
@@ -155,18 +155,18 @@ int main() {
               if (check_car_s < car_s - 22 || check_car_s > car_s + 22) {
                 enough_space = true;
               }
-              if (enough_space and empty_lane == lane -1 && !left_stop) {
-                change_lane = lane - 1;
-              }
-              else if (!enough_space and empty_lane == lane -1) {
-                left_stop = true;
-              }
-
+              // perform lane change if safe to do so
               if (enough_space && empty_lane == lane +1 && !right_stop) {
                 change_lane = lane + 1;
               }
               else if (!enough_space and empty_lane == lane + 1){
                 right_stop = true;
+              }
+              if (enough_space and empty_lane == lane -1 && !left_stop) {
+                change_lane = lane - 1;
+              }
+              else if (!enough_space and empty_lane == lane -1) {
+                left_stop = true;
               }
             }
           }
