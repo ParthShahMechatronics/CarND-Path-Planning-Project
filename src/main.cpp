@@ -14,6 +14,7 @@ using nlohmann::json;
 using std::string;
 using std::vector;
 
+// function to find lane of a car
 int lane_pos(double d_dist) {
   for (int i = 0; i < 3; i++) {
     if (4*i < d_dist && d_dist < 4+(4*i)) {
@@ -117,12 +118,12 @@ int main() {
           }
         
           bool too_close = false; // True if too close to a car in front
-          bool left_stop = false;
-          bool right_stop = false;
-          int cost = 0;
-          double right_cost = 0;
-          double left_cost = 0;
-          lane_time++;
+          bool left_stop = false; // True if left lane blocked by car or edge
+          bool right_stop = false; // True if right lane blocked by car or edge
+          int cost = 0; // cost will determine which lane to be in 
+          double right_cost = 0; // Cost eval for a right lane change
+          double left_cost = 0; // Cost eval for a left lane change
+          lane_time++; // spend a minimum amount of time in a lane before changing
 
           // Find ref_v to use
           for (int i = 0; i < sensor_fusion.size(); i++) {
@@ -144,47 +145,57 @@ int main() {
               } 
             }
             else {  
+              // check if car on left edge
               if (lane == 0) {
                 left_stop = true;
               }
+              // check if car on right edge
               else if (lane == 2) {
                 right_stop = true;
               }
 
-              int empty_lane = lane_pos(d);
-              bool enough_space = false;
-              // make sure enough space for lane changes 
-              if (check_car_s < car_s - 22 || check_car_s > car_s + 22) {
-                enough_space = true;
-                // cost evaluated as lane with most space
-                if (empty_lane == lane + 1) {
+              // check the lane of other cars
+              int check_lane = lane_pos(d);
+              // check if a car is blocking a potential lane change
+              if (abs(check_car_s - car_s) < 22 ) {
+                if (check_lane == lane + 1){
+                  right_stop = true;
+                  right_cost = 0;
+                }
+                else if (check_lane == lane - 1) {
+                  left_stop = true;
+                  left_cost = 0;
+                }
+              }
+              // if enough space to change lanes store cost value of change
+              else {
+                if (check_lane == lane + 1 && !right_stop) {
                   right_cost += abs(check_car_s-car_s);
                 }
-                else if(empty_lane == lane - 1) {
+                else if(check_lane == lane - 1 && !left_stop) {
                   left_cost += abs(check_car_s-car_s);
                 }
-              }
-              // perform lane change if safe to do so
-              // decide between left and right lane based on cost calculation
-              if (!enough_space and empty_lane == lane + 1){
-                right_stop = true;
-                right_cost = 0;
-              }
-              else if (enough_space && empty_lane == lane +1 && !right_stop && right_cost > left_cost) {
-                cost =  1;
-              }
-              if (!enough_space and empty_lane == lane -1) {
-                left_stop = true;
-                left_cost = 0;
-              }
-              else if (enough_space and empty_lane == lane -1 && !left_stop && left_cost > right_cost) {
-                cost = - 1;
               }
             }
           }
 
           // too close to car ahead and atleast one lane free
-          if (too_close && (!left_stop || !right_stop) && ref_vel >40 && lane_time > 130 && cost!= 0) {
+          if (too_close && (!left_stop || !right_stop) && ref_vel >40 && lane_time > 130) {
+            // if one lane is empty
+            if (right_cost == 0 && !right_stop) {
+              cost = 1;
+            }
+            else if (left_cost == 0 && !left_stop) {
+              cost = -1;
+            }
+            // perform lane change if safe to do so
+            // decide between left and right lane based on cost calculation
+            else if (right_cost > left_cost) {
+              cost = 1;
+            }
+            else if (left_cost > right_cost) {
+              cost = -1;
+            }
             lane += cost;
             lane_time = 0;
           }
